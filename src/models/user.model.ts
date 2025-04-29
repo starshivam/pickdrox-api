@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-
+import mongoose, { Collection } from 'mongoose';
+const prefix = 'pd_';
 const userSchema = new mongoose.Schema({
   name: { type: String, required: false },
   login_name: {type: String, required:true},
@@ -10,8 +10,10 @@ const userSchema = new mongoose.Schema({
   otp : { type:Number, required:false },
   otp_status: { type: Boolean, default: false },
   otp_expired: { type: Date, required: false },
-}, {
+}, 
+{
   timestamps: true,
+  collection: prefix + 'user'
 });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model('user', userSchema);
