@@ -10,15 +10,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 // User Register
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
-  const { login_name, password, register_via } = req.body;
+  const { email, password, register_via } = req.body;
   // Basic validation
   const registrationVia = ['email', 'phone'];
-  if (!login_name || !password || !registrationVia.includes(register_via)) {
+  if (!email || !password || !registrationVia.includes(register_via)) {
     const validation_error: { [key: string]: any } = {};
 
     if(!registrationVia.includes(register_via)) validation_error['register_via'] = "This is accept only email or phone";
 
-    if(!login_name) {
+    if(!email) {
       validation_error['user_name'] = "Email/Phone is required";
     }
 
@@ -27,7 +27,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
   }
   try {
-    const existingUser = await User.findOne({ login_name });
+    const existingUser = await User.findOne({ email });
     if (existingUser)  res.status(400).json({ message: 'User already exists' });
 
     const otp = generateOTP(4);
@@ -35,17 +35,17 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins later
-    let email = '';
+    let registerEmail = '';
     let phone = '';
     if(register_via == 'phone') {
-      phone = login_name;
+      phone = email;
     } else {
-      email = login_name;
+      registerEmail = email;
     }
 
-    const newUser = await User.create({ login_name:login_name, register_via:register_via, email: email, phone: phone, password: hashedPassword, otp: otp, otp_expired:otp_expiry });
+    const newUser = await User.create({ login_name:email, register_via:register_via, email: registerEmail, phone: phone, password: hashedPassword, otp: otp, otp_expired:otp_expiry });
     if(register_via == 'email') {
-      await otpEmailTemplate(otp, login_name);
+      await otpEmailTemplate(otp, email);
     }
     res.status(201).json({ success: true, message: 'User created', userId: newUser._id});
   } catch (err) {
