@@ -82,7 +82,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
        res.status(302).json({ success: true, message: "The email/phone is not verified yet", otp_verified : false, id:user._id });
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET);
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1000h' });
 
      res.json({ success: true, token, otp_verified : true });
     }

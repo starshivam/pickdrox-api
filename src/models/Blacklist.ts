@@ -5,7 +5,7 @@ const blacklistSchema = new mongoose.Schema({
   expiredAt: { type: Date, required: true }
 },
 {
-  collection: prefix + 'user'
+  collection: prefix + 'blacklist'
 }
 );
 
