@@ -92,15 +92,14 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload & { userId: string };
         const userId = decoded.userId;
 
-        const userProfile = await UserMeta.findOne({ userId });
-
-        if (!userProfile) {
+        const user = await User.findOne({ _id:userId });
+        if (!user) {
             // Send the error response and exit the function
             res.status(404).json({ success: false, message: 'Profile not found' });
             return; // Explicitly return here
         }
 
-        const user = await User.findOne({ _id:userId });
+        const userProfile = await UserMeta.findOne({ userId });
         const fullProfile = {
             ...userProfile,
             email: user?.email,
