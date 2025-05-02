@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model';
-import { generateOTP } from '../utils/otp';
+import { generateOTP, isEmailOrPhone } from '../utils/userFunctions';
 import { otpEmailTemplate } from '../emails/otpEmailTemplate';
 import { Blacklist } from '../models/Blacklist';
 
@@ -10,16 +10,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 // User Register
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
-  const { email, password, register_via } = req.body;
+  const { email, password } = req.body;
   // Basic validation
-  const registrationVia = ['email', 'phone'];
-  if (!email || !password || !registrationVia.includes(register_via)) {
+  if (!email || !password) {
     const validation_error: { [key: string]: any } = {};
 
-    if(!registrationVia.includes(register_via)) validation_error['register_via'] = "This is accept only email or phone";
-
     if(!email) {
-      validation_error['user_name'] = "Email/Phone is required";
+      validation_error['email'] = "Email/Phone is required";
     }
 
     if(!password) validation_error['password'] = "Password is required";
@@ -35,16 +32,17 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins later
+    const otp_on = isEmailOrPhone(email);
     let registerEmail = '';
     let phone = '';
-    if(register_via == 'phone') {
+    if(otp_on == 'phone') {
       phone = email;
     } else {
       registerEmail = email;
     }
 
-    const newUser = await User.create({ login_name:email, register_via:register_via, email: registerEmail, phone: phone, password: hashedPassword, otp: otp, otp_expired:otp_expiry });
-    if(register_via == 'email') {
+    const newUser = await User.create({ email: registerEmail, phone: phone, password: hashedPassword, otp: otp, otp_expired:otp_expiry });
+    if(otp_on == 'email') {
       await otpEmailTemplate(otp, email);
     }
     res.status(201).json({ success: true, message: 'User created', userId: newUser._id});
@@ -73,13 +71,15 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     if(!user.otp_status) {
       const otp = generateOTP(4);
       const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins later
-      await otpEmailTemplate(otp, email);
+      if(user.email) {
+        await otpEmailTemplate(otp, email);
+      }
       const updates = {otp: otp, otp_expired: otp_expiry};
       await User.findByIdAndUpdate(
         user._id,
         { $set: updates } // return updated doc and apply schema validation
       );
-       res.status(302).json({ success: true, message: "The email/phone is not verified yet", otp_verified : false, id:user._id });
+       res.status(201).json({ success: true, message: "The email/phone is not verified yet", otp_verified : false, id:user._id });
     }
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1000h' });
@@ -104,9 +104,9 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
 
   try {
 
-    const user = await User.findOne({ login_name:email_phone });
+    const user = await User.findOne({ email:email_phone });
 
-    if(user && user.register_via == 'email' && user.email) {
+    if(user && user.email) {
       const otp = generateOTP(4);
       const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins later
       await otpEmailTemplate(otp, user.email);
@@ -137,20 +137,29 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    const user = await User.findOne({ login_name:email_phone });
+    const user = await User.findOne({ email:email_phone });
     if(user) {
 
         if(user.otp == otp) {
           const expireDate = new Date(user.otp_expired ? user.otp_expired : '');
           const todayDate = new Date();     
           if (expireDate >= todayDate) {
-            const updates = {otp_status: true, otp_expired: ''};
-            await User.findByIdAndUpdate(
-              user._id,
-              { $set: updates } // return updated doc and apply schema validation
-            );
-            const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '10h' });
-            res.status(201).json({ success: true, token: token, message: "OTP has been verified."});
+            if(!user.otp_status) {
+              const updates = {otp_status: true, otp_expired: ''};
+              await User.findByIdAndUpdate(
+                user._id,
+                { $set: updates } // return updated doc and apply schema validation
+              );
+              const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '10h' });
+              res.status(201).json({ success: true, token: token, message: "OTP has been verified."});
+            } else {
+              const updates = {otp_expired: ''};
+              await User.findByIdAndUpdate(
+                user._id,
+                { $set: updates } // return updated doc and apply schema validation
+              );
+              res.status(201).json({ success: true, message: "OTP has been verified."});
+            }
           } else {
             res.status(401).json({ success: false, message: "OTP has been expired."});
           }
@@ -183,5 +192,41 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Server error during logout.' });
   }
 }
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+    const { email,
+       newPassword 
+      } = req.body;
+    const validation_error: { [key: string]: any } = {};
+
+    if (!newPassword || !email ){
+        if(!email)  validation_error['email'] = "Email/Phone is required";
+        if(!newPassword)  validation_error['password'] = "New Password is required";
+        // Send the validation error response and exit the function
+        res.status(400).json({ success: false, message: "Validation failed", errors: validation_error });
+        return; // Explicitly return to prevent further execution
+    }
+
+    try {
+
+        const user = await User.findOne({ email });
+        if (!user){
+            res.status(404).json({ success: false, message: 'User not found' }); 
+            return;
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        user.password = hashedPassword;
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Password changed successfully' });
+        return;
+    } catch (error) {
+        // Handle the error
+        res.status(500).json({ success: false, message: 'Failed to fetch profile', error });
+        return; // Explicitly return here
+    }
+};
 
 
