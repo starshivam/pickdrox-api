@@ -5,6 +5,7 @@ import User from '../models/user.model';
 import { generateOTP, isEmailOrPhone } from '../utils/userFunctions';
 import { otpEmailTemplate } from '../emails/otpEmailTemplate';
 import { Blacklist } from '../models/Blacklist';
+import userMetaModel from '../models/userMeta.model';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -82,9 +83,17 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
        res.status(201).json({ success: true, message: "The email/phone is not verified yet", otp_verified : false, id:user._id });
     }
 
+    const userProfile = await userMetaModel.findOne({ userId:user._id });
+    const fullProfile = {
+        ...userProfile,
+        email: user?.email,
+        phone: user?.phone,
+        email_verified: user?.email_verified,
+        phone_verified: user?.phone_verified,
+        };
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1000h' });
 
-     res.json({ success: true, token, otp_verified : true });
+     res.json({ success: true, token, otp_verified : true, user:fullProfile });
     }
   } catch (err) {
      res.status(500).json({ error: 'Server error' });
@@ -141,11 +150,12 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
     if(user) {
 
         if(user.otp == otp) {
+          const otp_on = isEmailOrPhone(email_phone);
           const expireDate = new Date(user.otp_expired ? user.otp_expired : '');
           const todayDate = new Date();     
           if (expireDate >= todayDate) {
             if(!user.otp_status) {
-              const updates = {otp_status: true, otp_expired: ''};
+              const updates = otp_on === 'phone' ? {otp_status: true, otp_expired: '', phone_verified: true} : {otp_status: true, otp_expired: '', email_verified: true} ;
               await User.findByIdAndUpdate(
                 user._id,
                 { $set: updates } // return updated doc and apply schema validation
@@ -153,7 +163,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
               const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '10h' });
               res.status(201).json({ success: true, token: token, message: "OTP has been verified."});
             } else {
-              const updates = {otp_expired: ''};
+              const updates = otp_on === 'phone' ? {otp_expired: '', phone_verified: true} : {otp_expired: '', email_verified: true} ;
               await User.findByIdAndUpdate(
                 user._id,
                 { $set: updates } // return updated doc and apply schema validation

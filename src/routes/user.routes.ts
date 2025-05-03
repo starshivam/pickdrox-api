@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { logout } from '../controllers/auth.controller';
-import { updateProfile, getProfile, changePassword } from '../controllers/user.controller';
+import { updateProfile, getProfile, changePassword, updateCommunicationPreferences, getCommunicationPreferences } from '../controllers/user.controller';
 
 const router = express.Router();
 
@@ -15,5 +15,10 @@ router.post('/profile/update', authenticateToken, updateProfile);
 router.get('/profile/get', authenticateToken, getProfile);
 
 router.post('/profile/change-password', authenticateToken, changePassword);
+
+router.post('/update/communication-preferences', authenticateToken, updateCommunicationPreferences);
+
+router.get('/get/communication-preferences', authenticateToken, getCommunicationPreferences);
+
 
 export default router;

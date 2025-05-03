@@ -7,8 +7,6 @@ const userSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
     first_name: { type: String, required: true },
     last_name: { type: String, required: false },
-    email_verified: { type: Boolean, default: false },
-    phone_verified: { type: Boolean, default: false },
     dob: { type: Date, required: false },
     postal_code: { type: String, required: false },
     locality: { type: String, required: false }, // Consistent camelCase
