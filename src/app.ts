@@ -7,10 +7,19 @@ import userRoutes from './routes/user.routes';
 const app: Application = express();
 
 // ✅ Enable CORS
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
+
 app.use(cors({
-  origin: 'http://localhost:3000', // your frontend
-  credentials: false // if using cookies or auth headers
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman)
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true // if you're using cookies or auth headers
 }));
+
 
 app.use(express.json());
 // Public routes (no auth)
