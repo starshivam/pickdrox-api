@@ -124,8 +124,12 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
         user._id,
         { $set: updates } // return updated doc and apply schema validation
       );
+
+      res.status(201).json({ success: true, message: "The OTP sent your email address."});
+    } else {
+      res.status(401).json({ success: false, message: "Invalid email address or account does not exist."});
     }
-    res.status(201).json({ success: true, message: "The OTP sent your email address."});
+    
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

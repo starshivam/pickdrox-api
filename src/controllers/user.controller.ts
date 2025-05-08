@@ -11,7 +11,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     const { first_name, last_name, email, phone, dob, postal_code, locality, address, city, state, about_me } = req.body;
     const token = req.headers.authorization?.split(' ')[1];
     const validation_error: { [key: string]: any } = {};
-
+    interface UpdateUser {
+        email: string;
+        phone: string;
+        email_verified?: boolean;
+        phone_verified?: boolean;
+    }
     if (!first_name || !email || !phone || !dob || !postal_code || !address || !city || !state) {
         if (!first_name) validation_error['first_name'] = "First name is required";
         if (!email) validation_error['email'] = "Email is required";
@@ -52,6 +57,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           const existingUser = await UserMeta.findOne({ userId });
   
           if (existingUser) {
+                
               // Update existing user profile
               await UserMeta.updateOne({ userId }, { $set: userData });
           } else {
@@ -61,9 +67,14 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
               
           }
 
-          const updateUser = {
+          const updateUser: UpdateUser = {
             email,
             phone
+          };
+
+          const currentUser =  await User.findOne({ _id:userId });
+          if(email != currentUser?.email) {
+            updateUser.email_verified = false;
           }
           await User.updateOne({ _id:userId }, { $set: updateUser });
           res.status(201).json({ success: true, message: 'Profile has been updated successfully.' });
@@ -274,7 +285,7 @@ export const getCommunicationPreferences = async (req: Request, res: Response): 
 
         const userCommunicationPrefereces = await communicationPreferencesModel.findOne({ userId });
        
-        res.status(200).json({ success: true, push_notification: userCommunicationPrefereces?.push_notification });
+        res.status(200).json({ success: true, mySelectedNotifiations: userCommunicationPrefereces });
         return; // Explicitly return here
     } catch (error) {
         // Handle the error
