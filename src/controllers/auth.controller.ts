@@ -23,10 +23,14 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     if(!password) validation_error['password'] = "Password is required";
 
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
+    return;
   }
   try {
     const existingUser = await User.findOne({ email });
-    if (existingUser)  res.status(400).json({ message: 'User already exists' });
+    if (existingUser) {
+     res.status(400).json({ message: 'User already exists' });
+     return;
+    }
 
     const otp = generateOTP(4);
 
@@ -47,8 +51,10 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       await otpEmailTemplate(otp, email);
     }
     res.status(201).json({ success: true, message: 'User created', userId: newUser._id});
+    return;
   } catch (err) {
     res.status(500).json({ error: err });
+    return;
   }
 };
 
@@ -57,16 +63,19 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
   if (!email || !password) {
     res.status(400).json({ message: "Email and password are required" });
+    return;
   }
   try {
     const user = await User.findOne({ email });
     if (!user) {
        res.status(400).json({ message: 'Invalid credentials' });
+       return;
     }
     if(user) {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
        res.status(400).json({ message: 'Invalid credentials' });
+       return;
     }
 
     if(!user.otp_status) {
@@ -81,6 +90,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         { $set: updates } // return updated doc and apply schema validation
       );
        res.status(201).json({ success: true, message: "The email/phone is not verified yet", otp_verified : false, id:user._id });
+       return;
     }
 
     const userProfile = await userMetaModel.findOne({ userId:user._id });
@@ -94,9 +104,11 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1000h' });
 
      res.json({ success: true, token, otp_verified : true, user:fullProfile });
+     return;
     }
   } catch (err) {
      res.status(500).json({ error: 'Server error' });
+     return;
   }
 };
 
@@ -109,6 +121,7 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
      validation_error['email_phone'] = "Email/Phone is required";
 
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
+    return;
   }
 
   try {
@@ -126,12 +139,15 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
       );
 
       res.status(201).json({ success: true, message: "The OTP sent your email address."});
+      return;
     } else {
       res.status(401).json({ success: false, message: "Invalid email address or account does not exist."});
+      return;
     }
     
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
+    return;
   }
 };
 
@@ -147,6 +163,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
     if(!otp) validation_error['otp'] = "OTP is required";
 
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
+    return;
   }
 
   try {
@@ -166,6 +183,7 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
               );
               const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '10h' });
               res.status(201).json({ success: true, token: token, message: "OTP has been verified."});
+              return;
             } else {
               const updates = otp_on === 'phone' ? {otp_expired: '', phone_verified: true} : {otp_expired: '', email_verified: true} ;
               await User.findByIdAndUpdate(
@@ -173,17 +191,22 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
                 { $set: updates } // return updated doc and apply schema validation
               );
               res.status(201).json({ success: true, message: "OTP has been verified."});
+              return;
             }
           } else {
             res.status(401).json({ success: false, message: "OTP has been expired."});
+            return;
           }
         }
 
         res.status(401).json({ success: false, message: "OTP is invalid."});
+        return;
     }
     res.status(403).json({ success: false, message: "You are not correct person."});
+    return;
   } catch(err) {
     res.status(500).json({ error: 'Server error' });
+    return;
   }
 
 }
@@ -202,8 +225,10 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     }
 
     res.status(200).json({ success: true, message: 'Logged out successfully.' });
+    return;
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error during logout.' });
+    return;
   }
 }
 
