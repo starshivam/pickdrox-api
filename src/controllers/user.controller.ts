@@ -130,6 +130,34 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
+export const getUsers = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const users = await User.find();
+        const userIds = users.map(user => user._id);
+
+        const userMetas = await UserMeta.find({ userId: { $in: userIds } });
+
+        // Create a map for quick metadata lookup
+        const metaMap = new Map(userMetas.map(meta => [(meta.userId ?? '').toString(), meta]));
+
+        const allUsers = users.map(user => {
+            const meta = metaMap.get(user._id.toString());
+            return {
+                ...meta?.toObject(), // include metadata fields
+                email: user.email,
+                phone: user.phone,
+                email_verified: user.email_verified,
+                phone_verified: user.phone_verified,
+            };
+        });
+
+        res.status(200).json({ success: true, users: allUsers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch users', error });
+    }
+};
+
+
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
     const { newPassword } = req.body;
     const token = req.headers.authorization?.split(' ')[1];
