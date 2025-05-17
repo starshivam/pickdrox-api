@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { logout } from '../controllers/auth.controller';
 import { updateProfile, getProfile, changePassword, updateCommunicationPreferences, getCommunicationPreferences } from '../controllers/user.controller';
+import { addRoute, getMyRoutes, getSingleRoute } from '../controllers/route.controller';
 
 const router = express.Router();
 
@@ -16,9 +17,14 @@ router.get('/profile/get', authenticateToken, getProfile);
 
 router.post('/profile/change-password', authenticateToken, changePassword);
 
+// User Preferences
 router.post('/update/communication-preferences', authenticateToken, updateCommunicationPreferences);
-
 router.get('/get/communication-preferences', authenticateToken, getCommunicationPreferences);
+
+// User Routes
+router.post('/add/route', authenticateToken, addRoute);
+router.get('/my/routes', authenticateToken, getMyRoutes);
+router.get('/route/:routeId', authenticateToken, getSingleRoute);
 
 
 export default router;
