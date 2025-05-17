@@ -13,9 +13,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
   // Basic validation
+  const validation_error: { [key: string]: any } = {};
   if (!email || !password) {
-    const validation_error: { [key: string]: any } = {};
-
     if(!email) {
       validation_error['email'] = "Email/Phone is required";
     }
@@ -25,6 +24,14 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
     return;
   }
+
+  const registerNameType = isEmailOrPhone(email);
+  if(registerNameType === 'invalid') {
+    validation_error['email'] = "Please enter valid email/phone";
+    res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
+    return;
+  }
+
   try {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -117,8 +124,11 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
   const { email_phone } = req.params;
   
   const validation_error: { [key: string]: any } = {};
-  if (!email_phone) {
-     validation_error['email_phone'] = "Email/Phone is required";
+  const registerNameType = isEmailOrPhone(email_phone);
+  if (!email_phone || registerNameType === 'invalid') {
+    if(!email_phone) validation_error['email_phone'] = "Email/Phone is required";
+     
+    if(registerNameType === 'invalid') validation_error['email_phone'] = "Please enter valid email/phone";
 
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
     return;
@@ -155,13 +165,17 @@ export const resendOTP = async (req: Request, res: Response): Promise<void> => {
 export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
   const {email_phone, otp} = req.body;
 
-  if (!email_phone || !otp ) {
+  const registerNameType = isEmailOrPhone(email_phone);
+
+  if (!email_phone || !otp || registerNameType === 'invalid') {
     const validation_error: { [key: string]: any } = {};
 
     if(!email_phone) validation_error['email_phone'] = "Email/Phone is required";
 
     if(!otp) validation_error['otp'] = "OTP is required";
 
+    if(registerNameType === 'invalid') validation_error['email_phone'] = "Please enter valid email/phone";
+    
     res.status(400).json({success: false,message: "Validation failed",errors: validation_error});
     return;
   }
