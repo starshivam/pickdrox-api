@@ -5,17 +5,24 @@ import Route from '../models/route.model';
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 export const addRoute = async (req: Request, res: Response): Promise<void> => {
-    const { leavingFrom, leavingCity, leavingLat, leavingLong, goingTo, goingCity, goingLat, goingLong, pickNearby, pickRedius, selectedRoute, carringWeight, itemDescription, packaging_type, other_packaging_type, package_category, package_other_category, routeType, travelingType, travelDays, leavingTime, returnTime, leavingDateTime, returnDateTime, totalDistance, adjustPrice } = req.body;
+    const { leavingFrom, leavingCity, leavingLat, leavingLong, goingTo, goingCity, goingLat, goingLong, pickNearby, pickRedius, selectedRoute, carringWeight, itemDescription, packaging_type, other_packaging_type, package_category, package_other_category, routeType, travelingType, travelDays, leavingTime, returnTime, leavingDateTime, returnDateTime, totalDistance, adjustPrice, routeStatus } = req.body;
 
     const token = req.headers.authorization?.split(' ')[1];
     const validation_error: { [key: string]: any } = {};
-    if (!leavingFrom || !goingTo || !selectedRoute || !carringWeight ) {
+    if (!leavingFrom || !goingTo || !selectedRoute || !carringWeight || !routeStatus) {
         if (!leavingFrom) validation_error['leavingFrom'] = "Leaving from is required";
         if (!goingTo) validation_error['goingTo'] = "Going to is required";
         if (!selectedRoute) validation_error['selectedRoute'] = "Route is required";
         if (!carringWeight) validation_error['carringWeight'] = "Wieght is required";
+        if (!routeStatus) validation_error['routeStatus'] = "Route status is required";
 
         // Send the validation error response and exit the function
+        res.status(400).json({ success: false, message: "Validation failed", errors: validation_error });
+        return; // Explicitly return to prevent further execution
+    }
+    const status = ['draft', 'active', 'inactive','archived'];
+    if (!status.includes(routeStatus)) {
+        validation_error['routeStatus'] = "The route status does not match the predefined status"
         res.status(400).json({ success: false, message: "Validation failed", errors: validation_error });
         return; // Explicitly return to prevent further execution
     }
@@ -52,7 +59,8 @@ export const addRoute = async (req: Request, res: Response): Promise<void> => {
               leavingDateTime, 
               returnDateTime, 
               totalDistance, 
-              adjustPrice
+              adjustPrice,
+              routeStatus
             };
 
             const newRoute = new Route(RouteData);

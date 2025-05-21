@@ -31,6 +31,7 @@ const routeSchema = new mongoose.Schema(
     returnDateTime: { type: String, required: false },
     totalDistance: { type: String, required: false },
     adjustPrice: { type: String, required: false },
+    routeStatus: {type: String, required: true}
   },
   {
     timestamps: true, // Automatically manage createdAt & updatedAt
