@@ -2,9 +2,9 @@ import mongoose from 'mongoose';
 const prefix = 'pd_';
 
 // Define the schema for user metadata
-const userSchema = new mongoose.Schema(
+const userMetaSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'users' },
     first_name: { type: String, required: true },
     last_name: { type: String, required: false },
     dob: { type: Date, required: false },
@@ -22,4 +22,4 @@ const userSchema = new mongoose.Schema(
 );
 
 // Export the model
-export default mongoose.model('UserMeta', userSchema);
+export default mongoose.model('UserMeta', userMetaSchema);

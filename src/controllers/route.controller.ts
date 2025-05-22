@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import Route from '../models/route.model';
+import userMetaModel from '../models/userMeta.model';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 export const addRoute = async (req: Request, res: Response): Promise<void> => {
-    const { leavingFrom, leavingCity, leavingLat, leavingLong, goingTo, goingCity, goingLat, goingLong, pickNearby, pickRedius, selectedRoute, carringWeight, itemDescription, packaging_type, other_packaging_type, package_category, package_other_category, routeType, travelingType, travelDays, leavingTime, returnTime, leavingDateTime, returnDateTime, totalDistance, adjustPrice, routeStatus } = req.body;
+    const { leavingFrom, leavingCity, leavingLat, leavingLong, goingTo, goingCity, goingLat, goingLong, pickNearby, pickRedius, selectedRoute, carringWeight, itemDescription, packaging_type, other_packaging_type, package_category, package_other_category, routeType, travelingType, travelDays, leavingDateTime, returnDateTime, totalDistance, adjustPrice, routeStatus } = req.body;
 
     const token = req.headers.authorization?.split(' ')[1];
     const validation_error: { [key: string]: any } = {};
@@ -28,50 +29,53 @@ export const addRoute = async (req: Request, res: Response): Promise<void> => {
     }
 
     try {
-          if (token) {
-              const decoded = jwt.verify(token, JWT_SECRET) as unknown;
-              const decodedToken = decoded as JwtPayload & { userId: string };
-              const userId = decodedToken.userId;
-              const RouteData = {
-              userId: userId,
-              leavingFrom,
-              leavingCity,
-              leavingLat,
-              leavingLong,
-              goingTo,
-              goingCity,
-              goingLat,
-              goingLong,
-              pickNearby,
-              pickRedius,
-              selectedRoute,
-              carringWeight, 
-              itemDescription, 
-              packaging_type, 
-              other_packaging_type, 
-              package_category, 
-              package_other_category, 
-              routeType, 
-              travelingType, 
-              travelDays, 
-              leavingTime, 
-              returnTime, 
-              leavingDateTime, 
-              returnDateTime, 
-              totalDistance, 
-              adjustPrice,
-              routeStatus
-            };
+        if (token) {
+            const decoded = jwt.verify(token, JWT_SECRET) as unknown;
+            const decodedToken = decoded as JwtPayload & { userId: string };
+            const userId = decodedToken.userId;
+            const userMeta = await userMetaModel.findOne({ userId });
+            if(userMeta) {
+                const RouteData = {
+                    userMetaId: userMeta?._id,
+                    leavingFrom,
+                    leavingCity,
+                    leavingLat,
+                    leavingLong,
+                    goingTo,
+                    goingCity,
+                    goingLat,
+                    goingLong,
+                    pickNearby,
+                    pickRedius,
+                    selectedRoute,
+                    carringWeight, 
+                    itemDescription, 
+                    packaging_type, 
+                    other_packaging_type, 
+                    package_category, 
+                    package_other_category, 
+                    routeType, 
+                    travelingType, 
+                    travelDays,  
+                    leavingDateTime, 
+                    returnDateTime, 
+                    totalDistance, 
+                    adjustPrice,
+                    routeStatus
+                };
 
-            const newRoute = new Route(RouteData);
-            await newRoute.save();
-            res.status(201).json({ success: true, message: 'Route has been updated successfully.' });
-            return;
-
-          } else {
+                const newRoute = new Route(RouteData);
+                await newRoute.save();
+                res.status(201).json({ success: true, message: 'Route has been updated successfully.' });
+                return;
+            } else {
+                res.status(400).json({ success: false, message: 'Please complete your profile first.' });
+                return;
+            }
+        } else {
           res.status(400).json({ success: false, message: 'Token not provided' });
           return;
-      }
+        }
 
     } catch (err) {
       console.error('Error in user profile handling:', err);

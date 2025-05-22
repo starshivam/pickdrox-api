@@ -4,7 +4,7 @@ const prefix = 'pd_';
 // Define the schema for user metadata
 const routeSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+    userMetaId: { type: mongoose.Schema.Types.ObjectId, ref: 'usermeta' },
     leavingFrom: { type: String, required: true },
     leavingCity: { type: String, required: true },
     leavingLat: { type: String, required: false },
@@ -25,10 +25,8 @@ const routeSchema = new mongoose.Schema(
     routeType: { type: String, required: false },
     travelingType: { type: String, required: false },
     travelDays: { type: JSON, required: false },
-    leavingTime: { type: String, required: false },
-    returnTime: { type: String, required: false },
-    leavingDateTime: { type: String, required: false },
-    returnDateTime: { type: String, required: false },
+    leavingDateTime: { type: Date, required: false },
+    returnDateTime: { type: Date, required: false },
     totalDistance: { type: String, required: false },
     adjustPrice: { type: String, required: false },
     routeStatus: {type: String, required: true}
