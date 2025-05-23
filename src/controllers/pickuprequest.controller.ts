@@ -80,7 +80,7 @@ export const addPickupRequest = async (req: Request, res: Response): Promise<voi
 
 }
 
-export const findAllUsersRequests = async (req: Request, res:Response): Promise<void> => {
+export const findAllRequestUsers = async (req: Request, res:Response): Promise<void> => {
   const { pickupLocation, dropLocation, pickupDate, weight } = req.query;
   const token = req.headers.authorization?.split(' ')[1];
     const validation_error: { [key: string]: any } = {};
@@ -109,6 +109,7 @@ export const findAllUsersRequests = async (req: Request, res:Response): Promise<
               query.dropLocation = { $regex: new RegExp(dropLocation as string, 'i') };
             }
 
+            query.pickupStatus = "active";
             if (pickupDate) {
               const date = new Date(pickupDate as string);
               const dayStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));

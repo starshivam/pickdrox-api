@@ -143,3 +143,80 @@ export const getSingleRoute = async (req: Request, res: Response): Promise<void>
         return; // Explicitly return here
     }
 };
+
+export const findAllTravellerUsers = async(req:Request, res:Response): Promise<void> => {
+    const { pickupLocation, dropLocation, leavingDate, weight } = req.query;
+    const token = req.headers.authorization?.split(' ')[1];
+    const validation_error: { [key: string]: any } = {};
+    if (!pickupLocation || !dropLocation) {
+        if (!pickupLocation) validation_error['pickupLocation'] = "Pickup location is required";
+        if (!dropLocation) validation_error['dropLocation'] = "Drop location is required";
+        // Send the validation error response and exit the function
+        res.status(400).json({ success: false, message: "Validation failed", errors: validation_error });
+        return; // Explicitly return to prevent further execution
+    }
+
+    // PAGINATION HANDLING
+    const page = parseInt(req.query.page as string) || 1;     // Default to page 1
+    const limit = parseInt(req.query.limit as string) || 10;  // Default to 10 results per page
+    const skip = (page - 1) * limit;
+    try {
+        if (token) {
+        // Build dynamic query
+        const query: any = {};
+        const orConditions: any[] = [];
+        if (pickupLocation) {
+            query.leavingFrom = { $regex: new RegExp(pickupLocation as string, 'i') };
+        }
+
+        if (dropLocation) {
+            query.goingTo = { $regex: new RegExp(dropLocation as string, 'i') };
+        }
+
+        if (leavingDate) {
+            const date = new Date(leavingDate as string);
+            const dayStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+            const dayEnd = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1));
+            //console.log("Date filter range:", dayStart, dayEnd);
+            orConditions.push({ leavingDateTime: {
+            $gte: dayStart,
+            $lt: dayEnd
+            } });
+
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+
+            orConditions.push({ travelDays: { $in: [dayName] } });
+        }
+
+        if (orConditions.length > 0) {
+            query.$or = orConditions;
+        }
+        
+        if (weight) {
+            // Assuming carringWeight is stored as a string, we must convert it
+            // either while storing or here. Best: store it as a Number.
+            query.carringWeight <= { $lte: weight };
+        }
+        query.routeStatus = "active";
+        const total = await Route.countDocuments(query);
+        const results = await Route
+            .find(query)
+            .sort({ leavingDateTime: 1 })
+            .skip(skip)
+            .limit(limit)
+            .populate({
+            path: 'userMetaId',
+            select: 'first_name last_name' // Only return selected fields
+            });
+
+        res.status(200).json({success: true, currentPage: page, totalPages: Math.ceil(total /limit), totalResults: total, data: results});
+        return;
+        } else {
+        res.status(400).json({ success: false, message: 'Token not provided' });
+        return;
+        }
+    } catch(error: any) {
+        res.status(500).json({ success: false, error: error });
+        return;
+    }
+}
