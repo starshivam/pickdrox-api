@@ -101,7 +101,7 @@ export const getMyRoutes = async (req: Request, res: Response): Promise<void> =>
         const allRoutes = await Route.find({ userId });
         if (!allRoutes) {
             // Send the error response and exit the function
-            res.status(404).json({ success: false, message: 'Profile not found' });
+            res.status(404).json({ success: false, message: 'Data not found' });
             return; // Explicitly return here
         }
 
@@ -127,11 +127,13 @@ export const getSingleRoute = async (req: Request, res: Response): Promise<void>
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload & { userId: string };
         const userId = decoded.userId;
-
-        const singleRoute = await Route.find({ userId, _id:routeId });
+        const singleRoute = await Route.findOne({ _id:routeId}).populate({
+            path: 'userMetaId',
+            select: 'first_name last_name' // Only return selected fields
+            });
         if (!singleRoute) {
             // Send the error response and exit the function
-            res.status(404).json({ success: false, message: 'Profile not found' });
+            res.status(404).json({ success: false, message: 'Route not found' });
             return; // Explicitly return here
         }
 
